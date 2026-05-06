@@ -118,3 +118,38 @@ Optional — שירותים נוספים (לא חובה)
 
 נוסף: בפרויקט נוסף קובץ mom-manager/vercel.json (framework: nextjs) כדי לעזור
 לזיהוי. אחרי שינוי — commit + push ו־Redeploy.
+
+
+================================================================================
+רשימת בדיקה סגורה — הרשמה בפרודקשן (אחרי Deploy)
+================================================================================
+
+□ ב-Vercel → Settings → Environment Variables:
+    NEXT_PUBLIC_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY
+  מסומנים ל-Production (ול-Preview אם בודקים preview). אחרי שינוי: Redeploy.
+
+□ בדיקה בדפדפן (בלי מפתחות): פתחי
+    https://<האתר-שלך>.vercel.app/api/health/supabase-env
+  חייב להופיע JSON עם  "ok": true  ו-"supabaseHost" עם xxx.supabase.co
+  אם ok=false — עדיין חסר אחד מהמשתנים או Deploy ישן.
+
+□ ב-Supabase → SQL Editor: הרצת supabase/schema-for-dashboard.sql (פעם אחת).
+
+□ ב-Supabase → Authentication → Providers: Email מופעל.
+
+□ ב-Supabase → Authentication → URL Configuration:
+    Site URL = https://<האתר>.vercel.app
+    Redirect URLs: אותה כתובת / עם ** או תבנית preview אם צריך (ראי למעלה).
+
+□ Confirm email: אם מופעל — אחרי הרשמה צריך ללחוץ על הקישור במייל לפני כניסה.
+
+
+================================================================================
+בדיקת שגיאת הרשמה בדפדפן (Network)
+================================================================================
+
+  F12 → Network → שליחת טופס הרשמה → חפשי בקשה ל-
+    ...supabase.co/auth/v1/signup
+  סטטוס 200 עם user וללא session — לרוב נדרש אישור מייל.
+  4xx — העתיקי את הודעת השגיאה מגוף התשובה (בלי סיסמה).

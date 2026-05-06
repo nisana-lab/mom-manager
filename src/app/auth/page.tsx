@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/SupabaseAuthProvider";
 
 function translateAuthError(message: string | undefined): string {
@@ -34,6 +34,14 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [serverEnvOk, setServerEnvOk] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/health/supabase-env")
+      .then((r) => r.json() as Promise<{ ok?: boolean }>)
+      .then((d) => setServerEnvOk(d.ok === true))
+      .catch(() => setServerEnvOk(false));
+  }, []);
 
   if (!ready) {
     return null;
@@ -91,6 +99,28 @@ export default function AuthPage() {
             ? "הזיני פרטים כדי להמשיך"
             : "חשבון חדש — רגע ומתחילים"}
         </p>
+
+        {serverEnvOk === false && (
+          <p
+            className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs leading-snug text-amber-900"
+            role="status"
+          >
+            <strong className="font-semibold">פריסה:</strong> השרת לא רואה את{" "}
+            <code className="rounded bg-white/70 px-1" dir="ltr">
+              NEXT_PUBLIC_SUPABASE_*
+            </code>
+            . ב-Vercel: Settings → Environment Variables → הוסיפי URL + anon ל-
+            Production (ול-Preview), ואז Redeploy. אחרי התיקון: רענון לדף{" "}
+            <code className="rounded bg-white/70 px-1" dir="ltr">
+              /api/health/supabase-env
+            </code>{" "}
+            —             צריך להופיע{" "}
+            <code className="rounded bg-white/70 px-1" dir="ltr">
+              {`"ok": true`}
+            </code>
+            . מדריך מלא: <code className="rounded bg-white/70 px-1">SETUP.txt</code>
+          </p>
+        )}
 
         <div className="mt-6 flex rounded-2xl bg-sage-100/80 p-1">
           <button
