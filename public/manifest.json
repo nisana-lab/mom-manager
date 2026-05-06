@@ -1,0 +1,36 @@
+{
+  "name": "MOM-MANAGER",
+  "short_name": "MOM-MANAGER",
+  "description": "ניהול יומי · מורה · אולפן · משפחה",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "natural",
+  "prefer_related_applications": false,
+  "background_color": "#faf6ee",
+  "theme_color": "#d4e4d4",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icons/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
