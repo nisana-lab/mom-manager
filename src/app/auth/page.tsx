@@ -12,6 +12,12 @@ function translateAuthError(message: string | undefined): string {
     return "יש לאשר את האימייל לפי הקישור שנשלח אליך.";
   if (m.includes("user already registered"))
     return "כתובת האימייל כבר רשומה. נסי להתחבר.";
+  if (m.includes("database error") || m.includes("saving new user"))
+    return "שגיאה ביצירת הפרופיל בבסיס הנתונים. ודאי שהרצת את schema-for-dashboard.sql ב-Supabase (SQL Editor).";
+  if (m.includes("signup") && m.includes("not enabled"))
+    return "הרשמה סגורה בהגדרות Supabase — Authentication → Providers → Email.";
+  if (m.includes("rate limit") || m.includes("too many requests"))
+    return "יותר מדי ניסיונות — נסי שוב בעוד דקה.";
   if (m === "missing_env")
     return "נדרשים NEXT_PUBLIC_SUPABASE_URL ו-NEXT_PUBLIC_SUPABASE_ANON_KEY: מקומית — ב־mom-manager/.env.local והפעלה מחדש של npm run dev; בפריסה (Vercel) — באותו שם ב־Project → Settings → Environment Variables, ואז Deploy מחדש. אם כבר הוגדר — נקי `.next` (npm run clean) ורענון קשיח.";
   if (m.includes("password"))
@@ -62,7 +68,9 @@ export default function AuthPage() {
       if (res.error) {
         setMessage(translateAuthError(res.error.message));
       } else if (mode === "register") {
-        setMessage("נרשמת בהצלחה. אם נדרש אישור אימייל — בדקי את תיבת הדואר.");
+        setMessage(
+          "נרשמת בהצלחה. אם לא עברת לדף הבית — כנראה נדרש אישור אימייל; בדקי בתיבה וב-Spam. אחרי האישור נסי להתחבר."
+        );
       }
     } finally {
       setBusy(false);

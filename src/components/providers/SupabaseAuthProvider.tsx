@@ -60,27 +60,32 @@ export function SupabaseAuthProvider({
     const remember = readAuthRememberMe();
     const client = tryCreateSupabaseBrowserClient(remember, publicEnv);
     if (!client) {
+      setSupabase(null);
       setSession(createLocalPreviewSession());
       setReady(true);
       return;
     }
     setSupabase(client);
+  }, [publicEnv]);
 
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
     let detached: (() => void) | undefined;
-
     const run = async () => {
       const safety = window.setTimeout(() => setReady(true), 4000);
       try {
         const {
           data: { subscription },
-        } = client.auth.onAuthStateChange((_event, sess) => {
+        } = supabase.auth.onAuthStateChange((_event, sess) => {
           setSession(sess);
         });
         detached = () => subscription.unsubscribe();
 
         const {
           data: { session: initial },
-        } = await client.auth.getSession();
+        } = await supabase.auth.getSession();
         setSession(initial);
       } catch {
         /* רשת / Supabase — ממשיכים בלי סשן */
@@ -94,7 +99,7 @@ export function SupabaseAuthProvider({
     return () => {
       detached?.();
     };
-  }, [publicEnv]);
+  }, [supabase]);
 
   const signIn = useCallback(
     async ({
@@ -113,6 +118,13 @@ export function SupabaseAuthProvider({
       }
       setSupabase(client);
       const res = await client.auth.signInWithPassword({ email, password });
+      const sess = res.data.session;
+      if (sess) {
+        setSession(sess);
+      } else if (!res.error) {
+        const { data } = await client.auth.getSession();
+        if (data.session) setSession(data.session);
+      }
       return { error: res.error };
     },
     [publicEnv]
@@ -146,6 +158,13 @@ export function SupabaseAuthProvider({
           emailRedirectTo: origin ? `${origin}/` : undefined,
         },
       });
+      const sess = res.data.session;
+      if (sess) {
+        setSession(sess);
+      } else if (!res.error) {
+        const { data } = await client.auth.getSession();
+        if (data.session) setSession(data.session);
+      }
       return { error: res.error };
     },
     [publicEnv]
