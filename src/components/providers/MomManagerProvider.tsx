@@ -88,15 +88,18 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const uid = userId;
+    const client = supabase;
+
     setState(null);
     setCloudReady(false);
     let cancelled = false;
 
     async function init() {
       const pushRow = async (s: MomManagerPersisted) => {
-        await supabase.from("mom_manager_state").upsert(
+        await client.from("mom_manager_state").upsert(
           {
-            user_id: userId,
+            user_id: uid,
             state: s,
             updated_at: new Date().toISOString(),
           },
@@ -104,16 +107,16 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
         );
       };
 
-      const { data: row, error } = await supabase
+      const { data: row, error } = await client
         .from("mom_manager_state")
         .select("state, updated_at")
-        .eq("user_id", userId)
+        .eq("user_id", uid)
         .maybeSingle();
 
       if (cancelled) return;
 
       if (error) {
-        const local = loadPersistedStateForUser(userId);
+        const local = loadPersistedStateForUser(uid);
         setState(local);
         setCloudReady(true);
         void pushRow(local);
@@ -122,15 +125,15 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
 
       const remote = row?.state;
       if (hasMeaningfulRemoteState(remote)) {
-        const h = hydratePersistedFromRemoteBlob(remote, userId);
+        const h = hydratePersistedFromRemoteBlob(remote, uid);
         setState(h);
-        savePersistedStateForUser(userId, h);
+        savePersistedStateForUser(uid, h);
         setCloudReady(true);
         return;
       }
 
-      let local = loadPersistedStateForUser(userId);
-      const legacy = tryConsumeLegacyImport(userId);
+      let local = loadPersistedStateForUser(uid);
+      const legacy = tryConsumeLegacyImport(uid);
       if (legacy) {
         local = legacy;
       }
