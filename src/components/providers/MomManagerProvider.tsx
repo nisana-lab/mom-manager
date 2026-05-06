@@ -82,9 +82,20 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (!userId || !supabase) {
+    if (!userId) {
       setState(null);
       setCloudReady(false);
+      return;
+    }
+
+    if (!supabase) {
+      let local = loadPersistedStateForUser(userId);
+      const legacy = tryConsumeLegacyImport(userId);
+      if (legacy) {
+        local = legacy;
+      }
+      setState(local);
+      setCloudReady(true);
       return;
     }
 
@@ -96,6 +107,15 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function init() {
+      const gate = { settled: false };
+      const arm = window.setTimeout(() => {
+        if (gate.settled || cancelled) return;
+        gate.settled = true;
+        const local = loadPersistedStateForUser(uid);
+        setState(local);
+        setCloudReady(true);
+      }, 12_000);
+
       const pushRow = async (s: MomManagerPersisted) => {
         await client.from("mom_manager_state").upsert(
           {
@@ -107,39 +127,56 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
         );
       };
 
-      const { data: row, error } = await client
-        .from("mom_manager_state")
-        .select("state, updated_at")
-        .eq("user_id", uid)
-        .maybeSingle();
+      try {
+        const { data: row, error } = await client
+          .from("mom_manager_state")
+          .select("state, updated_at")
+          .eq("user_id", uid)
+          .maybeSingle();
 
-      if (cancelled) return;
+        window.clearTimeout(arm);
+        if (cancelled) return;
 
-      if (error) {
-        const local = loadPersistedStateForUser(uid);
+        if (gate.settled) {
+          return;
+        }
+        gate.settled = true;
+
+        if (error) {
+          const local = loadPersistedStateForUser(uid);
+          setState(local);
+          setCloudReady(true);
+          void pushRow(local);
+          return;
+        }
+
+        const remote = row?.state;
+        if (hasMeaningfulRemoteState(remote)) {
+          const h = hydratePersistedFromRemoteBlob(remote, uid);
+          setState(h);
+          savePersistedStateForUser(uid, h);
+          setCloudReady(true);
+          return;
+        }
+
+        let local = loadPersistedStateForUser(uid);
+        const legacy = tryConsumeLegacyImport(uid);
+        if (legacy) {
+          local = legacy;
+        }
         setState(local);
         setCloudReady(true);
-        void pushRow(local);
-        return;
+        await pushRow(local);
+      } catch {
+        window.clearTimeout(arm);
+        if (cancelled) return;
+        if (!gate.settled) {
+          gate.settled = true;
+          const local = loadPersistedStateForUser(uid);
+          setState(local);
+          setCloudReady(true);
+        }
       }
-
-      const remote = row?.state;
-      if (hasMeaningfulRemoteState(remote)) {
-        const h = hydratePersistedFromRemoteBlob(remote, uid);
-        setState(h);
-        savePersistedStateForUser(uid, h);
-        setCloudReady(true);
-        return;
-      }
-
-      let local = loadPersistedStateForUser(uid);
-      const legacy = tryConsumeLegacyImport(uid);
-      if (legacy) {
-        local = legacy;
-      }
-      setState(local);
-      setCloudReady(true);
-      await pushRow(local);
     }
 
     void init();

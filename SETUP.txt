@@ -1,0 +1,120 @@
+MOM-MANAGER — התקנה מהירה (רק API מ-Supabase)
+============================================
+
+שלב 1 — פרויקט ב-Supabase
+---------------------------
+  • צרי פרויקט ב-https://supabase.com והמתיני לסיום היצירה.
+
+שלב 2 — מפתחות בפרויקט המקומי
+--------------------------------
+  • בתיקייה mom-manager: העתיקי את הקובץ .env.example לשם .env.local
+    (במחשב: העתקה ידנית, או ב-PowerShell מתוך mom-manager:)
+    Copy-Item -Path .env.example -Destination .env.local
+
+  • פתחי ב-Supabase: Project Settings → API
+  • הדביקי ב-.env.local:
+      NEXT_PUBLIC_SUPABASE_URL   = Project URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY = הערך של anon / public
+
+  • שמרי את הקובץ והפעילי מחדש: npm run dev (משורש "פרוייקט שני" או מתוך mom-manager)
+
+שלב 3 — בסיס נתונים (פעם אחת)
+-------------------------------
+  • ב-Supabase: SQL Editor → New query
+  • פתחי במחשב את הקובץ:
+      mom-manager/supabase/schema-for-dashboard.sql
+  • העתיקי את כל התוכן → הדביקי ב-SQL Editor → Run
+
+  (אם מתקבלת שגיאה על realtime publication — הריצי שוב רק את השורה האחרונה,
+   או בדקי ב-Database → Publications שהטבלה mom_manager_state ב-replication.)
+
+אחרי זה
+--------
+  • הרשמה והתחברות במייל+סיסמה במסך /auth
+  • כל הנתונים נשמרים לפי משתמשת בטבלה mom_manager_state
+
+
+Optional — שירותים נוספים (לא חובה)
+--------------------------------------
+  • SUPABASE_SERVICE_ROLE_KEY — מ-Settings → API → service_role (סודי! לא בדפדפן)
+  • VAPID / CRON — רק אם מפעילים Web Push ו-cron כמו בקוד ה-API
+
+
+================================================================================
+פריסה לאינטרנט (קישור לשליחה לאחרים) — Vercel מומלץ ל-Next.js
+================================================================================
+
+לפני הפריסה: SQL של supabase/schema-for-dashboard.sql כבר הורץ, והאפליקציה עובדת
+מקומית עם אותם מפתחות anon.
+
+אופן א׳ — דרך האתר vercel.com (פשוט)
+--------------------------------------
+  1) דחפי את הקוד ל-GitHub (ריפו פרטי או ציבורי).
+
+  2) https://vercel.com → התחברות → Add New → Project → Import את הריפו.
+
+  3) הגדרות חשובות:
+     • Framework Preset: Next.js
+     • Root Directory:
+         - אם ב-GitHub יש תיקייה mom-manager עם Next — שימי: mom-manager
+         - אם כל קבצי האפליקציה כבר בשורש הריפו — השאירי ריק או נקודה
+     • Build Command:    npm run build   (ברירת מחדל)
+     • Output:           (אל תגדירי ידנית — Next מטפל)
+
+  4) לפני Deploy — Environment Variables (אותו מסך או Settings → Environment Variables):
+       NEXT_PUBLIC_SUPABASE_URL      = ה-URL מ-Supabase (Settings → API)
+       NEXT_PUBLIC_SUPABASE_ANON_KEY = anon public
+
+     לכל הסביבות: Production (ואופציונלית Preview).
+
+  5) Deploy. בסוף תקבלי קישור כמו:  https://שם-הפרויקט.vercel.app
+     זה הקישור לשליחה למשתמשות.
+
+אופן ב׳ — משורש הפרויקט במחשב (CLI)
+-------------------------------------
+  • npm i -g vercel   או   npx vercel
+  • מתוך התיקייה mom-manager:
+      npx vercel          (בחירה אינטראקטיבית, פריסת preview)
+      npx vercel --prod   (פרודקשן — הקישור הקבוע)
+
+  • אם Vercel שואל על Root / scope — וודאי שהפרויקט מגדיר את התיקייה הנכונה.
+
+אחרי שיש קישור (למשל https://xxx.vercel.app) — חובה ב-Supabase
+----------------------------------------------------------------
+  • Authentication → URL Configuration:
+      Site URL:           https://xxx.vercel.app
+      Redirect URLs:      הוסיפי  https://xxx.vercel.app/**
+                            (ואת גרסת ה-preview של Vercel אם צריך: ***.vercel.app)
+
+  בלי זה: אימות מייל / קישורי התחברות עלולים לחזור ל-localhost במקום לאתר.
+
+הערות
+-----
+  • אם הבילד נכשל — שלחי את לוג ה-Build מ-Vercel.
+  • שירותים חינמיים: Vercel + Supabase בתכנית החינמית מתאימים להתחלה.
+
+
+================================================================================
+תקלה: "No Next.js version detected" ב-Vercel
+================================================================================
+
+מה קורה: Vercel מריץ npm על package.json שבו אין את החבילה "next" (בדרך כלל
+זה package.json של שורש מונורפו, לא של האפליקציה).
+
+פתרון — בחרי אחת משתי האפשרויות (לפי איך שהריפו ב-GHub בנוי):
+
+א) הריפו הוא כמו "פרוייקט שני" (יש תיקיית mom-manager בפנים)
+   -------------------------------------------------------------
+   ב-Vercel: Project → Settings → General → Root Directory
+   שימי בדיוק:  mom-manager
+   שמרי ו־Redeploy.
+
+ב) הריפו nisana-lab/mom-manager — רק האפליקציה בשורש (בלי תיקיית mom-manager)
+   --------------------------------------------------------------------------
+   וודאי שבשורש הריפו (ב-GitHub) מופיעים:
+   package.json (עם "next" ב-dependencies), src/, next.config.mjs, וכו'.
+   אם מוזג השורש הלא נכון (package.json בלי next) — לדחוף את התוכן של
+   תיקיית mom-manager מהפרויקט המקומי לשורש הריפו.
+
+נוסף: בפרויקט נוסף קובץ mom-manager/vercel.json (framework: nextjs) כדי לעזור
+לזיהוי. אחרי שינוי — commit + push ו־Redeploy.

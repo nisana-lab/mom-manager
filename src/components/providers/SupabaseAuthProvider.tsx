@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createLocalPreviewSession } from "@/lib/auth/local-preview-session";
 import {
   readAuthRememberMe,
   tryCreateSupabaseBrowserClient,
@@ -22,7 +23,8 @@ type AuthContextValue = {
   user: User | null;
   session: Session | null;
   ready: boolean;
-  configError: boolean;
+  /** אין Supabase — רק תצוגה ו-localStorage במכשיר */
+  localPreviewMode: boolean;
   signIn: (args: {
     email: string;
     password: string;
@@ -35,6 +37,8 @@ type AuthContextValue = {
     rememberMe: boolean;
   }) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  /** אחרי התנתקות במצב מקומי — חזרה לסשן תצוגה בלי Supabase */
+  resumeLocalPreview: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -43,13 +47,12 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
-  const [configError, setConfigError] = useState(false);
 
   useEffect(() => {
     const remember = readAuthRememberMe();
     const client = tryCreateSupabaseBrowserClient(remember);
     if (!client) {
-      setConfigError(true);
+      setSession(createLocalPreviewSession());
       setReady(true);
       return;
     }
@@ -58,18 +61,25 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     let detached: (() => void) | undefined;
 
     const run = async () => {
-      const {
-        data: { subscription },
-      } = client.auth.onAuthStateChange((_event, sess) => {
-        setSession(sess);
-      });
-      detached = () => subscription.unsubscribe();
+      const safety = window.setTimeout(() => setReady(true), 4000);
+      try {
+        const {
+          data: { subscription },
+        } = client.auth.onAuthStateChange((_event, sess) => {
+          setSession(sess);
+        });
+        detached = () => subscription.unsubscribe();
 
-      const {
-        data: { session: initial },
-      } = await client.auth.getSession();
-      setSession(initial);
-      setReady(true);
+        const {
+          data: { session: initial },
+        } = await client.auth.getSession();
+        setSession(initial);
+      } catch {
+        /* רשת / Supabase — ממשיכים בלי סשן */
+      } finally {
+        window.clearTimeout(safety);
+        setReady(true);
+      }
     };
     void run();
 
@@ -91,7 +101,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       writeAuthRememberMe(rememberMe);
       const client = tryCreateSupabaseBrowserClient(rememberMe);
       if (!client) {
-        setConfigError(true);
         return { error: { message: "missing_env" } as AuthError };
       }
       setSupabase(client);
@@ -116,7 +125,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       writeAuthRememberMe(rememberMe);
       const client = tryCreateSupabaseBrowserClient(rememberMe);
       if (!client) {
-        setConfigError(true);
         return { error: { message: "missing_env" } as AuthError };
       }
       setSupabase(client);
@@ -139,18 +147,37 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, [supabase]);
 
+  const resumeLocalPreview = useCallback(() => {
+    if (tryCreateSupabaseBrowserClient(readAuthRememberMe())) {
+      return;
+    }
+    setSession(createLocalPreviewSession());
+  }, []);
+
+  const localPreviewMode = supabase === null && session !== null;
+
   const value = useMemo(
     () => ({
       supabase,
       user: session?.user ?? null,
       session,
       ready,
-      configError,
+      localPreviewMode,
       signIn,
       signUp,
       signOut,
+      resumeLocalPreview,
     }),
-    [supabase, session, ready, configError, signIn, signUp, signOut]
+    [
+      supabase,
+      session,
+      ready,
+      localPreviewMode,
+      signIn,
+      signUp,
+      signOut,
+      resumeLocalPreview,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

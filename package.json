@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "env:init": "node scripts/copy-env-example.js",
+    "clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\"",
+    "dev": "next dev --port 3333",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start --port 3333",
+    "lint": "next lint",
+    "deploy": "npx --yes vercel@latest --prod"
   },
   "dependencies": {
     "@serwist/next": "^9.5.11",

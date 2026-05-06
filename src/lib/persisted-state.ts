@@ -35,7 +35,8 @@ function normalizeForToday(base: MomManagerPersisted): MomManagerPersisted {
 
 function normalizeHealthForToday(base: MomManagerPersisted): MomManagerPersisted {
   const today = todayLocalISODate();
-  const h = base.health;
+  const defH = defaultPersistedState().health;
+  const h = base.health && typeof base.health === "object" ? base.health : defH;
   if (!h.healthDay || h.healthDay !== today) {
     return {
       ...base,
@@ -51,7 +52,8 @@ function normalizeHealthForToday(base: MomManagerPersisted): MomManagerPersisted
 
 function normalizeBabyCareForToday(base: MomManagerPersisted): MomManagerPersisted {
   const today = todayLocalISODate();
-  const bc = base.babyCare;
+  const defBc = defaultPersistedState().babyCare;
+  const bc = base.babyCare && typeof base.babyCare === "object" ? base.babyCare : defBc;
   if (!bc.babyCareDay || bc.babyCareDay !== today) {
     return {
       ...base,
@@ -411,6 +413,14 @@ function repairPersisted(s: MomManagerPersisted): MomManagerPersisted {
 
   if (!out.kidsTracking || typeof out.kidsTracking !== "object") {
     out.kidsTracking = { ...def.kidsTracking };
+  }
+
+  if (!out.babyCare || typeof out.babyCare !== "object") {
+    out.babyCare = { ...def.babyCare };
+  }
+
+  if (!out.health || typeof out.health !== "object") {
+    out.health = { ...def.health };
   }
 
   return out;

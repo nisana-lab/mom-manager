@@ -13,6 +13,7 @@ import {
 import { useCallback, useState } from "react";
 import { useMomManager } from "@/hooks/use-mom-manager";
 import type { BabyDiaperType } from "@/types/mom-manager";
+import { defaultPersistedState } from "@/types/mom-manager";
 
 function newId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -39,7 +40,7 @@ export function BabyCareClient() {
   const [diaperTime, setDiaperTime] = useState("");
   const [diaperType, setDiaperType] = useState<BabyDiaperType>("pee");
 
-  const bc = state?.babyCare;
+  const bc = state?.babyCare ?? defaultPersistedState().babyCare;
 
   const addFeeding = useCallback(() => {
     if (!feedTime) return;
@@ -104,7 +105,7 @@ export function BabyCareClient() {
     }));
   };
 
-  if (!ready || !bc) {
+  if (!ready || !state) {
     return (
       <div className="mx-auto max-w-lg pb-28 pt-6">
         <div className="h-48 animate-pulse rounded-2xl bg-white/50" />
