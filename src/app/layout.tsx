@@ -80,12 +80,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const publicEnv = {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  };
+
   return (
     <html lang="he" dir="rtl">
       <body
         className={`${heebo.variable} ${assistant.variable} min-h-screen bg-cream-100 font-sans text-slate-900 antialiased`}
       >
-        <AppShell>{children}</AppShell>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__MOM_MANAGER_SUPABASE__=${JSON.stringify(publicEnv)};`,
+          }}
+        />
+        <AppShell publicEnv={publicEnv}>{children}</AppShell>
       </body>
     </html>
   );

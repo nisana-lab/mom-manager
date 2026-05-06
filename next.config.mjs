@@ -1,5 +1,13 @@
+import envPkg from "@next/env";
 import { randomUUID } from "node:crypto";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import withSerwistInit from "@serwist/next";
+
+const { loadEnvConfig } = envPkg;
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+loadEnvConfig(__dirname);
 
 const revision = randomUUID();
 

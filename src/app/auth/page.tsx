@@ -13,7 +13,7 @@ function translateAuthError(message: string | undefined): string {
   if (m.includes("user already registered"))
     return "כתובת האימייל כבר רשומה. נסי להתחבר.";
   if (m === "missing_env")
-    return "נדרשים NEXT_PUBLIC_SUPABASE_URL ו-NEXT_PUBLIC_SUPABASE_ANON_KEY בקובץ .env.local (בתיקיית mom-manager), ואז הפעלה מחדש של npm run dev.";
+    return "נדרשים NEXT_PUBLIC_SUPABASE_URL ו-NEXT_PUBLIC_SUPABASE_ANON_KEY: מקומית — ב־mom-manager/.env.local והפעלה מחדש של npm run dev; בפריסה (Vercel) — באותו שם ב־Project → Settings → Environment Variables, ואז Deploy מחדש. אם כבר הוגדר — נקי `.next` (npm run clean) ורענון קשיח.";
   if (m.includes("password"))
     return "הסיסמה חלשה מדי או לא עומדת בדרישות.";
   return message;

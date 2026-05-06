@@ -7,11 +7,19 @@ import { PushSyncClient } from "@/components/push/PushSyncClient";
 import { SmartNotificationsClient } from "@/components/notifications/SmartNotificationsClient";
 import { MomManagerProvider } from "@/components/providers/MomManagerProvider";
 import { PwaInstallCta } from "@/components/pwa/PwaInstallCta";
+import type { SupabasePublicEnv } from "@/lib/supabase/browser-client";
 import { SupabaseAuthProvider, useAuth } from "@/components/providers/SupabaseAuthProvider";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  publicEnv,
+}: {
+  children: React.ReactNode;
+  /** מ־layout (שרת) — מפתחות Supabase ללקוח */
+  publicEnv: SupabasePublicEnv;
+}) {
   return (
-    <SupabaseAuthProvider>
+    <SupabaseAuthProvider publicEnv={publicEnv}>
       <AppShellInner>{children}</AppShellInner>
     </SupabaseAuthProvider>
   );

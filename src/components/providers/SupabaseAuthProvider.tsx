@@ -16,6 +16,7 @@ import {
   readAuthRememberMe,
   tryCreateSupabaseBrowserClient,
   writeAuthRememberMe,
+  type SupabasePublicEnv,
 } from "@/lib/supabase/browser-client";
 
 type AuthContextValue = {
@@ -43,14 +44,21 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
+export function SupabaseAuthProvider({
+  children,
+  publicEnv,
+}: {
+  children: ReactNode;
+  /** מגיע מהשרת (layout) — נדרש כדי שלא ייעלמו NEXT_PUBLIC בצד הלקוח */
+  publicEnv: SupabasePublicEnv;
+}) {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const remember = readAuthRememberMe();
-    const client = tryCreateSupabaseBrowserClient(remember);
+    const client = tryCreateSupabaseBrowserClient(remember, publicEnv);
     if (!client) {
       setSession(createLocalPreviewSession());
       setReady(true);
@@ -86,7 +94,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       detached?.();
     };
-  }, []);
+  }, [publicEnv]);
 
   const signIn = useCallback(
     async ({
@@ -99,7 +107,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       rememberMe: boolean;
     }) => {
       writeAuthRememberMe(rememberMe);
-      const client = tryCreateSupabaseBrowserClient(rememberMe);
+      const client = tryCreateSupabaseBrowserClient(rememberMe, publicEnv);
       if (!client) {
         return { error: { message: "missing_env" } as AuthError };
       }
@@ -107,7 +115,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       const res = await client.auth.signInWithPassword({ email, password });
       return { error: res.error };
     },
-    []
+    [publicEnv]
   );
 
   const signUp = useCallback(
@@ -123,21 +131,24 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       rememberMe: boolean;
     }) => {
       writeAuthRememberMe(rememberMe);
-      const client = tryCreateSupabaseBrowserClient(rememberMe);
+      const client = tryCreateSupabaseBrowserClient(rememberMe, publicEnv);
       if (!client) {
         return { error: { message: "missing_env" } as AuthError };
       }
       setSupabase(client);
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : undefined;
       const res = await client.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: fullName.trim() },
+          emailRedirectTo: origin ? `${origin}/` : undefined,
         },
       });
       return { error: res.error };
     },
-    []
+    [publicEnv]
   );
 
   const signOut = useCallback(async () => {
@@ -148,11 +159,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   const resumeLocalPreview = useCallback(() => {
-    if (tryCreateSupabaseBrowserClient(readAuthRememberMe())) {
+    if (tryCreateSupabaseBrowserClient(readAuthRememberMe(), publicEnv)) {
       return;
     }
     setSession(createLocalPreviewSession());
-  }, []);
+  }, [publicEnv]);
 
   const localPreviewMode = supabase === null && session !== null;
 
