@@ -57,14 +57,18 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
   const flushCloud = useCallback(
     async (next: MomManagerPersisted) => {
       if (!supabase || !userId) return;
-      await supabase.from("mom_manager_state").upsert(
-        {
-          user_id: userId,
-          state: next,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error } = await supabase.from("mom_manager_state").upsert(
+          {
+            user_id: userId,
+            state: next,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+        if (!error) return;
+        await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+      }
     },
     [supabase, userId]
   );
@@ -107,17 +111,8 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function init() {
-      const gate = { settled: false };
-      const arm = window.setTimeout(() => {
-        if (gate.settled || cancelled) return;
-        gate.settled = true;
-        const local = loadPersistedStateForUser(uid);
-        setState(local);
-        setCloudReady(true);
-      }, 12_000);
-
       const pushRow = async (s: MomManagerPersisted) => {
-        await client.from("mom_manager_state").upsert(
+        const { error } = await client.from("mom_manager_state").upsert(
           {
             user_id: uid,
             state: s,
@@ -125,6 +120,7 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
           },
           { onConflict: "user_id" }
         );
+        return error;
       };
 
       try {
@@ -134,27 +130,21 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
           .eq("user_id", uid)
           .maybeSingle();
 
-        window.clearTimeout(arm);
         if (cancelled) return;
 
-        if (gate.settled) {
+        const remote = row?.state;
+
+        if (!error && hasMeaningfulRemoteState(remote)) {
+          const h = hydratePersistedFromRemoteBlob(remote, uid);
+          setState(h);
+          savePersistedStateForUser(uid, h);
+          setCloudReady(true);
           return;
         }
-        gate.settled = true;
 
         if (error) {
           const local = loadPersistedStateForUser(uid);
           setState(local);
-          setCloudReady(true);
-          void pushRow(local);
-          return;
-        }
-
-        const remote = row?.state;
-        if (hasMeaningfulRemoteState(remote)) {
-          const h = hydratePersistedFromRemoteBlob(remote, uid);
-          setState(h);
-          savePersistedStateForUser(uid, h);
           setCloudReady(true);
           return;
         }
@@ -166,16 +156,19 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
         }
         setState(local);
         setCloudReady(true);
-        await pushRow(local);
-      } catch {
-        window.clearTimeout(arm);
-        if (cancelled) return;
-        if (!gate.settled) {
-          gate.settled = true;
-          const local = loadPersistedStateForUser(uid);
-          setState(local);
-          setCloudReady(true);
+        const pushErr = await pushRow(local);
+        if (pushErr) {
+          for (let attempt = 0; attempt < 2; attempt++) {
+            await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+            const e = await pushRow(local);
+            if (!e) break;
+          }
         }
+      } catch {
+        if (cancelled) return;
+        const local = loadPersistedStateForUser(uid);
+        setState(local);
+        setCloudReady(true);
       }
     }
 
@@ -213,6 +206,17 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(channel);
     };
   }, [supabase, userId, cloudReady]);
+
+  /** כשחוזרים ללשונית — שולחים שוב לענן (מובייל: רשת/רקע עשויים לעכב debounce) */
+  useEffect(() => {
+    if (!supabase || !userId || !cloudReady || state === null) return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void flushCloud(state);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [supabase, userId, cloudReady, state, flushCloud]);
 
   const toggleTask = useCallback(
     (taskId: string, done: boolean) => {
