@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizeSupabaseProjectUrl } from "@/lib/supabase/normalize-project-url";
 
 const REMEMBER_KEY = "mom-manager-auth-remember";
 
@@ -52,11 +53,11 @@ export function tryCreateSupabaseBrowserClient(
   publicEnv?: SupabasePublicEnv | null
 ): SupabaseClient | null {
   const injected = readInjectedPublicEnv();
-  const url = (
+  const url = normalizeSupabaseProjectUrl(
     (publicEnv?.url?.trim() || "") ||
-    (injected.url?.trim() || "") ||
-    (process.env.NEXT_PUBLIC_SUPABASE_URL || "")
-  ).trim();
+      (injected.url?.trim() || "") ||
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || "")
+  );
   const key = (
     (publicEnv?.anonKey?.trim() || "") ||
     (injected.anonKey?.trim() || "") ||

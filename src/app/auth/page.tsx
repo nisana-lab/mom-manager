@@ -20,6 +20,8 @@ function translateAuthError(message: string | undefined): string {
     return "יותר מדי ניסיונות — נסי שוב בעוד דקה.";
   if (m === "missing_env")
     return "נדרשים NEXT_PUBLIC_SUPABASE_URL ו-NEXT_PUBLIC_SUPABASE_ANON_KEY: מקומית — ב־mom-manager/.env.local והפעלה מחדש של npm run dev; בפריסה (Vercel) — באותו שם ב־Project → Settings → Environment Variables, ואז Deploy מחדש. אם כבר הוגדר — נקי `.next` (npm run clean) ורענון קשיח.";
+  if (m.includes("invalid path"))
+    return "כתובת הסופבייס כוללת נתיב מיותר (למשל בטעות העתקה נכנס גם חלק של rest). השתמשי רק בכתובת הבסיס מהמסך API. גם בגרסה החדשה האתר מתקן זאת אוטומטית — רענני את האתר ונסי שוב.";
   if (m.includes("password"))
     return "הסיסמה חלשה מדי או לא עומדת בדרישות.";
   return message;

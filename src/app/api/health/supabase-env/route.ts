@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { normalizeSupabaseProjectUrl } from "@/lib/supabase/normalize-project-url";
 
 /** בדיקה בטוחה לפריסה: לא חושף מפתחות, רק האם הוגדרו וה-host של Supabase */
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const rawUrl = normalizeSupabaseProjectUrl(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+  );
   const hasKey = Boolean((process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim());
 
   let supabaseHost: string | null = null;

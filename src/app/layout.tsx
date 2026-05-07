@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Assistant, Heebo } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import { normalizeSupabaseProjectUrl } from "@/lib/supabase/normalize-project-url";
 
 const APP_NAME = "MOM-MANAGER";
 const APP_DEFAULT_TITLE = "MOM-MANAGER 5.0";
@@ -81,8 +82,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const publicEnv = {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    url: normalizeSupabaseProjectUrl(process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""),
+    anonKey: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim(),
   };
 
   return (
