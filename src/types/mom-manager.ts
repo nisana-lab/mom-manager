@@ -9,6 +9,10 @@ export type ShoppingLists = {
   general: ShoppingItem[];
 };
 
+export type MealSelectionKey = "sandwiches" | "dinner";
+
+export type MealSelectionOptions = Record<MealSelectionKey, string[]>;
+
 export type HealthMeals = {
   breakfast: string;
   lunch: string;
@@ -119,6 +123,8 @@ export type NotificationPrefsPersisted = {
   reminderKeysFiredToday: string[];
   /** מפתח → timestamp (ms) — לא להציג שוב לפני */
   reminderSnoozeUntil: Record<string, number>;
+  /** עד 2 מספרי WhatsApp לשליחה מהירה (E.164 ללא +, לדוגמה 9725XXXXXXXX) */
+  whatsappRecipients: string[];
 };
 
 export function defaultKidsTrackingTags(): KidsTrackTagDef[] {
@@ -140,6 +146,7 @@ export type MomManagerPersisted = {
     sandwiches: string;
     dinner: string;
   };
+  selectionOptions: MealSelectionOptions;
   studioSessions: StudioSession[];
   /** ISO date (YYYY-MM-DD) when morning studio banner was dismissed */
   studioMorningDismissedDate: string | null;
@@ -164,6 +171,10 @@ export const defaultPersistedState = (): MomManagerPersisted => ({
   selections: {
     sandwiches: "גבינה וירקות",
     dinner: "עוף בתנור",
+  },
+  selectionOptions: {
+    sandwiches: ["גבינה וירקות", "טונה", "חומוס וביצה", "לבנה וזיתים", "חביתה"],
+    dinner: ["עוף בתנור", "דגים", "פסטה", "פיצה ביתית", "מרק וסלט", "ארוחה חלבית"],
   },
   studioSessions: [],
   studioMorningDismissedDate: null,
@@ -198,5 +209,6 @@ export const defaultPersistedState = (): MomManagerPersisted => ({
     lastDailySummaryDate: "",
     reminderKeysFiredToday: [],
     reminderSnoozeUntil: {},
+    whatsappRecipients: [],
   },
 });

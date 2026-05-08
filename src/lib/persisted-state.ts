@@ -8,6 +8,7 @@ import {
   type KidsMealsDayEntry,
   type KidsTrackTagDef,
   type KidsTrackTagValue,
+  type MealSelectionKey,
   type MomManagerPersisted,
   type StudioSession,
   type TrackedChild,
@@ -367,7 +368,32 @@ function mergeNotificationPrefs(
       n.reminderSnoozeUntil && typeof n.reminderSnoozeUntil === "object"
         ? snooze
         : def.reminderSnoozeUntil,
+    whatsappRecipients: Array.isArray(n.whatsappRecipients)
+      ? n.whatsappRecipients
+          .filter((x): x is string => typeof x === "string")
+          .map((x) => x.trim())
+          .filter((x) => x.length > 0)
+          .slice(0, 2)
+      : def.whatsappRecipients,
   };
+}
+
+function sanitizeMealOptions(
+  raw: unknown,
+  fallback: string[]
+): string[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const value = item.trim();
+    if (!value) continue;
+    if (seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
+  }
+  return out.length > 0 ? out : [...fallback];
 }
 
 /** תיקון שמירה ישנה / חלקית — מונע קריסת React כשחסרים שדות */
@@ -408,6 +434,13 @@ function repairPersisted(s: MomManagerPersisted): MomManagerPersisted {
               )
             )
           : {},
+      whatsappRecipients: Array.isArray(np.whatsappRecipients)
+        ? np.whatsappRecipients
+            .filter((x): x is string => typeof x === "string")
+            .map((x) => x.trim())
+            .filter((x) => x.length > 0)
+            .slice(0, 2)
+        : [],
     };
   }
 
@@ -421,6 +454,46 @@ function repairPersisted(s: MomManagerPersisted): MomManagerPersisted {
 
   if (!out.health || typeof out.health !== "object") {
     out.health = { ...def.health };
+  }
+
+  const selectionOptionsRaw =
+    out.selectionOptions && typeof out.selectionOptions === "object"
+      ? out.selectionOptions
+      : {};
+  out.selectionOptions = {
+    sandwiches: sanitizeMealOptions(
+      (selectionOptionsRaw as Record<MealSelectionKey, unknown>).sandwiches,
+      def.selectionOptions.sandwiches
+    ),
+    dinner: sanitizeMealOptions(
+      (selectionOptionsRaw as Record<MealSelectionKey, unknown>).dinner,
+      def.selectionOptions.dinner
+    ),
+  };
+
+  out.selections = {
+    sandwiches:
+      typeof out.selections?.sandwiches === "string" &&
+      out.selections.sandwiches.trim()
+        ? out.selections.sandwiches
+        : out.selectionOptions.sandwiches[0],
+    dinner:
+      typeof out.selections?.dinner === "string" && out.selections.dinner.trim()
+        ? out.selections.dinner
+        : out.selectionOptions.dinner[0],
+  };
+
+  if (!out.selectionOptions.sandwiches.includes(out.selections.sandwiches)) {
+    out.selectionOptions.sandwiches = [
+      out.selections.sandwiches,
+      ...out.selectionOptions.sandwiches,
+    ];
+  }
+  if (!out.selectionOptions.dinner.includes(out.selections.dinner)) {
+    out.selectionOptions.dinner = [
+      out.selections.dinner,
+      ...out.selectionOptions.dinner,
+    ];
   }
 
   return out;
@@ -446,6 +519,12 @@ function buildMergedFromParsed(
     selections: {
       ...defaultPersistedState().selections,
       ...parsed.selections,
+    },
+    selectionOptions: {
+      ...defaultPersistedState().selectionOptions,
+      ...(parsed.selectionOptions && typeof parsed.selectionOptions === "object"
+        ? parsed.selectionOptions
+        : {}),
     },
     studioSessions: mergeStudio(parsed),
     studioMorningDismissedDate:

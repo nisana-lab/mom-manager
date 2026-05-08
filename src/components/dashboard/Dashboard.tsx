@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/components/providers/SupabaseAuthProvider";
 import { LiveClock } from "@/components/dashboard/LiveClock";
 import { DailyProgress } from "@/components/dashboard/DailyProgress";
@@ -14,6 +15,7 @@ import {
   buildTodayTasks,
   type ChecklistTaskDef,
 } from "@/lib/checklist-model";
+import type { MealSelectionKey } from "@/types/mom-manager";
 
 function taskCardClass(task: ChecklistTaskDef, done: boolean) {
   const base =
@@ -37,6 +39,7 @@ export function Dashboard() {
     ready,
     toggleTask,
     setSelection,
+    applyPersisted,
     hasStudioToday,
     todayStudioSessions,
     showStudioMorningAlert,
@@ -47,9 +50,91 @@ export function Dashboard() {
     (user?.user_metadata?.full_name as string | undefined)?.trim() || "";
 
   const tasks = buildTodayTasks(hasStudioToday);
+  const [optionDraft, setOptionDraft] = useState<Record<MealSelectionKey, string>>({
+    sandwiches: "",
+    dinner: "",
+  });
+  const [editing, setEditing] = useState<{
+    key: MealSelectionKey;
+    oldValue: string;
+    nextValue: string;
+  } | null>(null);
 
   const completed = tasks.filter((t) => state?.checklist[t.id]).length;
   const total = tasks.length;
+
+  const addSelectionOption = (key: MealSelectionKey) => {
+    const draft = optionDraft[key].trim();
+    if (!draft) return;
+    applyPersisted((prev) => {
+      const list = prev.selectionOptions[key] ?? [];
+      if (list.includes(draft)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        selectionOptions: {
+          ...prev.selectionOptions,
+          [key]: [...list, draft],
+        },
+      };
+    });
+    setOptionDraft((prev) => ({ ...prev, [key]: "" }));
+  };
+
+  const removeSelectionOption = (key: MealSelectionKey, value: string) => {
+    applyPersisted((prev) => {
+      const list = prev.selectionOptions[key] ?? [];
+      if (list.length <= 1) {
+        return prev;
+      }
+      const nextList = list.filter((x) => x !== value);
+      if (nextList.length === 0) {
+        return prev;
+      }
+      const current = prev.selections[key];
+      return {
+        ...prev,
+        selections: {
+          ...prev.selections,
+          [key]: current === value ? nextList[0] : current,
+        },
+        selectionOptions: {
+          ...prev.selectionOptions,
+          [key]: nextList,
+        },
+      };
+    });
+    if (editing && editing.key === key && editing.oldValue === value) {
+      setEditing(null);
+    }
+  };
+
+  const saveEditedOption = () => {
+    if (!editing) return;
+    const nextValue = editing.nextValue.trim();
+    if (!nextValue) return;
+    applyPersisted((prev) => {
+      const list = prev.selectionOptions[editing.key] ?? [];
+      const exists = list.includes(nextValue);
+      const nextList = list.map((x) =>
+        x === editing.oldValue ? (exists ? x : nextValue) : x
+      );
+      const current = prev.selections[editing.key];
+      return {
+        ...prev,
+        selections: {
+          ...prev.selections,
+          [editing.key]: current === editing.oldValue ? nextValue : current,
+        },
+        selectionOptions: {
+          ...prev.selectionOptions,
+          [editing.key]: nextList,
+        },
+      };
+    });
+    setEditing(null);
+  };
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-5 pb-28 pt-4">
@@ -214,6 +299,7 @@ export function Dashboard() {
                           <select
                             value={
                               state?.selections[task.dropdownKey] ??
+                              state?.selectionOptions[task.dropdownKey]?.[0] ??
                               task.dropdownOptions[0]
                             }
                             onChange={(e) =>
@@ -233,6 +319,113 @@ export function Dashboard() {
                               ? "בחירת תפריט סנדוויצ׳ים"
                               : "בחירת ארוחת ערב"}
                           </p>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => addSelectionOption(task.dropdownKey!)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-sage-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sage-700"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              הוספה
+                            </button>
+                            <input
+                              value={optionDraft[task.dropdownKey!]}
+                              onChange={(e) =>
+                                setOptionDraft((prev) => ({
+                                  ...prev,
+                                  [task.dropdownKey!]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && addSelectionOption(task.dropdownKey!)
+                              }
+                              placeholder={
+                                task.dropdownKey === "sandwiches"
+                                  ? "הוסיפי סנדוויץ׳"
+                                  : "הוסיפי ארוחה"
+                              }
+                              className="min-w-0 flex-1 rounded-lg border border-sage-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-sage-400 focus:ring-1 focus:ring-sage-300"
+                            />
+                          </div>
+                          <div className="mt-2 flex flex-wrap justify-end gap-2">
+                            {(state?.selectionOptions[task.dropdownKey!] ??
+                              task.dropdownOptions ??
+                              []
+                            ).map((opt) => {
+                              const isEditing =
+                                editing?.key === task.dropdownKey &&
+                                editing.oldValue === opt;
+                              return (
+                                <span
+                                  key={opt}
+                                  className="inline-flex items-center gap-1 rounded-full border border-sage-200 bg-sage-50 px-2 py-1 text-xs text-slate-700"
+                                >
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={saveEditedOption}
+                                        className="rounded p-0.5 text-emerald-700 hover:bg-emerald-50"
+                                        aria-label="שמירה"
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditing(null)}
+                                        className="rounded p-0.5 text-slate-500 hover:bg-slate-100"
+                                        aria-label="ביטול"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                      <input
+                                        autoFocus
+                                        value={editing.nextValue}
+                                        onChange={(e) =>
+                                          setEditing({
+                                            ...editing,
+                                            nextValue: e.target.value,
+                                          })
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") saveEditedOption();
+                                        }}
+                                        className="w-28 rounded border border-sage-200 bg-white px-1.5 py-0.5 text-xs outline-none focus:border-sage-400"
+                                      />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setEditing({
+                                            key: task.dropdownKey!,
+                                            oldValue: opt,
+                                            nextValue: opt,
+                                          })
+                                        }
+                                        className="rounded p-0.5 text-sage-700 hover:bg-sage-100"
+                                        aria-label="עריכה"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeSelectionOption(task.dropdownKey!, opt)
+                                        }
+                                        className="rounded p-0.5 text-rose-700 hover:bg-rose-100"
+                                        aria-label="מחיקה"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                      <span>{opt}</span>
+                                    </>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     )}
