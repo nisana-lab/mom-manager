@@ -53,6 +53,7 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<MomManagerPersisted | null>(null);
   const [cloudReady, setCloudReady] = useState(false);
   const cloudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef<MomManagerPersisted | null>(null);
 
   const flushCloud = useCallback(
     async (next: MomManagerPersisted) => {
@@ -77,13 +78,29 @@ export function MomManagerProvider({ children }: { children: ReactNode }) {
     (next: MomManagerPersisted) => {
       if (!userId) return;
       savePersistedStateForUser(userId, next);
+      /** שליחה מיידית לסופבייס — השהיה קודמת גרמה לשינויים שלא לעלות לענן לפני סגירת דף / מעבר אפליקציה */
+      void flushCloud(next);
       if (cloudTimer.current) clearTimeout(cloudTimer.current);
       cloudTimer.current = setTimeout(() => {
         void flushCloud(next);
-      }, 700);
+      }, 1200);
     },
     [userId, flushCloud]
   );
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    const onPageHide = () => {
+      const s = stateRef.current;
+      if (s) void flushCloud(s);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [supabase, userId, flushCloud]);
 
   useEffect(() => {
     if (!userId) {
