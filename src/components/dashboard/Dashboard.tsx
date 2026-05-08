@@ -352,9 +352,14 @@ export function Dashboard() {
                               task.dropdownOptions ??
                               []
                             ).map((opt) => {
-                              const isEditing =
-                                editing?.key === task.dropdownKey &&
-                                editing.oldValue === opt;
+                              const isEditing = Boolean(
+                                editing &&
+                                  editing.key === task.dropdownKey &&
+                                  editing.oldValue === opt
+                              );
+                              const editingValue = isEditing
+                                ? editing?.nextValue ?? ""
+                                : "";
                               return (
                                 <span
                                   key={opt}
@@ -380,12 +385,13 @@ export function Dashboard() {
                                       </button>
                                       <input
                                         autoFocus
-                                        value={editing.nextValue}
+                                        value={editingValue}
                                         onChange={(e) =>
-                                          setEditing({
-                                            ...editing,
-                                            nextValue: e.target.value,
-                                          })
+                                          setEditing((prev) =>
+                                            prev
+                                              ? { ...prev, nextValue: e.target.value }
+                                              : prev
+                                          )
                                         }
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") saveEditedOption();
