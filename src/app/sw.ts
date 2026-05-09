@@ -58,6 +58,7 @@ self.addEventListener("push", (event: PushEvent) => {
       tag: payload.tag,
       icon: "/icons/192",
       lang: "he",
+      vibrate: [140, 90, 140],
     })
   );
 });

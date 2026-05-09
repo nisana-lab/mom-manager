@@ -2,6 +2,10 @@
 
 import { Bell } from "lucide-react";
 import { useMomManager } from "@/hooks/use-mom-manager";
+import {
+  playReminderChime,
+  unlockReminderAudio,
+} from "@/lib/reminder-chime";
 
 const SUMMARY_HOUR_OPTIONS = [17, 18, 19, 20, 21, 22, 23] as const;
 
@@ -16,6 +20,7 @@ export function NotificationPrefsBar() {
 
   const enableBrowser = async () => {
     if (typeof Notification === "undefined") return;
+    await unlockReminderAudio();
     try {
       const p = await Notification.requestPermission();
       if (p === "granted") {
@@ -71,6 +76,7 @@ export function NotificationPrefsBar() {
     if (typeof Notification === "undefined") return;
     let p = Notification.permission;
     if (p !== "granted") {
+      await unlockReminderAudio();
       try {
         p = await Notification.requestPermission();
       } catch {
@@ -78,6 +84,7 @@ export function NotificationPrefsBar() {
       }
     }
     if (p !== "granted") return;
+    await unlockReminderAudio();
     applyPersisted((prev) => ({
       ...prev,
       notificationPrefs: {
@@ -103,6 +110,52 @@ export function NotificationPrefsBar() {
     ? prefs.dailySummaryHour
     : 20;
 
+  /** צליל באפליקציה + בקשת הרשאה אם צריך + התראת בדיקה */
+  const testReminderFeedback = async () => {
+    await unlockReminderAudio();
+    playReminderChime();
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "granted") {
+      try {
+        new Notification("MOM-MANAGER · בדיקה", {
+          body: "כך נראית התראת תזכורת מהדפדפן",
+          tag: "mom-manager-test",
+          lang: "he",
+          silent: false,
+          vibrate: [140, 90, 140],
+        });
+      } catch {
+        /* */
+      }
+      return;
+    }
+    try {
+      const p = await Notification.requestPermission();
+      if (p === "granted") {
+        applyPersisted((prev) => ({
+          ...prev,
+          notificationPrefs: {
+            ...prev.notificationPrefs,
+            browserNotificationsEnabled: true,
+          },
+        }));
+        try {
+          new Notification("MOM-MANAGER · בדיקה", {
+            body: "ההרשאה אושרה — תזכורות יכולות להופיע גם כשהטאב ברקע",
+            tag: "mom-manager-test",
+            lang: "he",
+            silent: false,
+            vibrate: [140, 90, 140],
+          });
+        } catch {
+          /* */
+        }
+      }
+    } catch {
+      /* */
+    }
+  };
+
   return (
     <section
       dir="rtl"
@@ -113,7 +166,10 @@ export function NotificationPrefsBar() {
         <h2 className="text-sm font-bold text-slate-900">תזכורות וסיכום יומי</h2>
       </div>
       <p className="mb-3 text-xs leading-relaxed text-slate-600">
-        התראות כשהדף או ה־PWA פתוחים — תלוי דפדפן ומכשיר.
+        כשמגיעה תזכורת יישמע ציפצוף קצר באפליקציה (ובמובייל אפשר גם רטט). התראת מערכת
+        מהדפדפן תופיע רק אחרי שתאשרי — בטלפון לוחצים על «אישור הרשאת התראות» או
+        «בדיקת צליל והתראה», ואז מאשרים בחלון של המערכת (ב־iPhone: לעיתים דרך הגדרות
+        האתר או אחרי התקנת האפליקציה למסך הבית).
         <span className="mt-1 block">
           התראות גם כשהאפליקציה סגורה נשלחות ב־Web Push לאחר הגדרת Supabase,
           מפתחות VAPID ומשימת Cron בפריסה (למשל Vercel).
@@ -138,6 +194,13 @@ export function NotificationPrefsBar() {
             אישור הרשאת התראות
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => void testReminderFeedback()}
+          className="rounded-lg border border-sage-400 bg-sage-50 px-2.5 py-1 text-xs font-semibold text-sage-900 hover:bg-sage-100"
+        >
+          בדיקת צליל והתראה
+        </button>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
         <label

@@ -11,8 +11,15 @@ import {
 } from "@/lib/task-reminders";
 import { useMomManager } from "@/hooks/use-mom-manager";
 import { todayLocalISODate } from "@/lib/dates";
+import {
+  playReminderChime,
+  unlockReminderAudio,
+} from "@/lib/reminder-chime";
 
 const SNOOZE_MS = 25 * 60 * 1000;
+
+/** רטט בסיסי להתראות במובייל (Android; ב־iOS תלוי דפדפן) */
+const REMINDER_VIBRATE_PATTERN = [140, 90, 140] as const;
 
 export function SmartNotificationsClient() {
   const {
@@ -31,6 +38,35 @@ export function SmartNotificationsClient() {
 
   const [summaryOpen, setSummaryOpen] = useState(false);
   const lastBrowserTagRef = useRef<string | null>(null);
+  const lastChimeKeyRef = useRef<string | null>(null);
+
+  /** פתיחת שמע אחרי מגע/לחיצה ראשונה — נדרש בחלק מהמכשירים (בעיקר iOS) */
+  useEffect(() => {
+    const unlock = () => {
+      void unlockReminderAudio();
+    };
+    document.addEventListener("touchstart", unlock, { passive: true, once: true });
+    document.addEventListener("click", unlock, { passive: true, once: true });
+    return () => {};
+  }, []);
+
+  useEffect(() => {
+    if (!due) {
+      lastChimeKeyRef.current = null;
+      return;
+    }
+    const key = reminderKey(todayLocalISODate(), due.taskId);
+    if (lastChimeKeyRef.current === key) return;
+    lastChimeKeyRef.current = key;
+    playReminderChime();
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try {
+        navigator.vibrate([...REMINDER_VIBRATE_PATTERN]);
+      } catch {
+        /* */
+      }
+    }
+  }, [due]);
 
   const runTick = useCallback(() => {
     if (!state) return;
@@ -63,6 +99,8 @@ export function SmartNotificationsClient() {
             body: next.title,
             tag: key,
             lang: "he",
+            silent: false,
+            vibrate: [...REMINDER_VIBRATE_PATTERN],
           });
         } catch {
           /* ידוע במכשירים חוסמים */
