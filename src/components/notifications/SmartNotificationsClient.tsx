@@ -172,6 +172,8 @@ export function SmartNotificationsClient() {
               className="fixed inset-0 z-[60] bg-slate-900/40"
               onClick={() => setDue(null)}
             />
+            {/* מרכוז בתוך viewport + safe-area — לא חותך את החלונית בפלאפון */}
+            <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+5rem))] pointer-events-none">
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -179,7 +181,7 @@ export function SmartNotificationsClient() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 16 }}
-              className="fixed left-1/2 top-[12vh] z-[70] w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl border border-sage-200/90 bg-white p-4 shadow-2xl ring-2 ring-sage-300/40"
+              className="pointer-events-auto w-full max-w-sm max-h-[min(78dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-6rem))] overflow-y-auto overscroll-contain rounded-2xl border border-sage-200/90 bg-white p-4 shadow-2xl ring-2 ring-sage-300/40"
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 text-sage-700">
@@ -234,6 +236,7 @@ export function SmartNotificationsClient() {
                 </button>
               </div>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
@@ -250,13 +253,14 @@ export function SmartNotificationsClient() {
               className="fixed inset-0 z-[60] bg-slate-950/45"
               onClick={() => closeSummary(true)}
             />
+            <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+5rem))] pointer-events-none">
             <motion.div
               role="dialog"
               aria-modal="true"
               initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className={`fixed left-1/2 top-[8vh] z-[70] w-[min(94vw,24rem)] max-h-[min(82vh,32rem)] -translate-x-1/2 overflow-y-auto rounded-2xl border p-4 shadow-2xl ${
+              className={`pointer-events-auto w-full max-w-md max-h-[min(82dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-6rem))] overflow-y-auto overscroll-contain rounded-2xl border p-4 shadow-2xl ${
                 summary.tone === "positive"
                   ? "border-emerald-200/90 bg-gradient-to-b from-emerald-50/95 to-white ring-1 ring-emerald-200/60"
                   : summary.tone === "mixed"
@@ -308,6 +312,7 @@ export function SmartNotificationsClient() {
                 הבנתי, לסגור להיום
               </button>
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
