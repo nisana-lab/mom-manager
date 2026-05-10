@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useMomManager } from "@/hooks/use-mom-manager";
 import {
   playReminderChime,
@@ -10,8 +11,36 @@ import { speakReminderPreviewSample } from "@/lib/reminder-speech";
 
 const SUMMARY_HOUR_OPTIONS = [17, 18, 19, 20, 21, 22, 23] as const;
 
+type PushServerStatus = {
+  pushInfrastructureReady: boolean;
+  cronSecretSet: boolean;
+  needsCronSecretInProduction: boolean;
+} | null;
+
 export function NotificationPrefsBar() {
   const { state, ready, applyPersisted } = useMomManager();
+  const [pushServerStatus, setPushServerStatus] =
+    useState<PushServerStatus>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/push/config-status")
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled || !j || typeof j !== "object") return;
+        setPushServerStatus({
+          pushInfrastructureReady: Boolean(j.pushInfrastructureReady),
+          cronSecretSet: Boolean(j.cronSecretSet),
+          needsCronSecretInProduction: Boolean(j.needsCronSecretInProduction),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setPushServerStatus(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!ready || !state) return null;
 
@@ -183,9 +212,11 @@ export function NotificationPrefsBar() {
         מהדפדפן תופיע רק אחרי שתאשרי — בטלפון לוחצים על «אישור הרשאת התראות» או
         «בדיקת צליל והתראה», ואז מאשרים בחלון של המערכת (ב־iPhone: לעיתים דרך הגדרות
         האתר או אחרי התקנת האפליקציה למסך הבית).
-        <span className="mt-1 block">
-          התראות גם כשהאפליקציה סגורה נשלחות ב־Web Push לאחר הגדרת Supabase,
-          מפתחות VAPID ומשימת Cron בפריסה (למשל Vercel).
+        <span className="mt-1 block font-medium text-slate-700">
+          תזכורות כשהאפליקציה כבויה: סמני למטה «גם כשהאפליקציה סגורה», אשרי התראות,
+          והתקיני את האתר כאפליקציה לטלפון (Chrome/Android או Safari→מסך הבית ב־iOS).
+          בשרת צריך מפתח Service Role של Supabase, זוג מפתחות VAPID ומשימת Cron — ראי
+          קובץ SETUP.txt בפרויקט.
         </span>
       </p>
       <div className="flex flex-wrap items-center justify-end gap-3">
@@ -256,6 +287,55 @@ export function NotificationPrefsBar() {
           גם כשהאפליקציה סגורה (Web Push)
         </label>
       </div>
+      {prefs.backgroundPushEnabled &&
+        pushServerStatus &&
+        !pushServerStatus.pushInfrastructureReady && (
+          <p
+            className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-xs leading-snug text-amber-950"
+            role="status"
+          >
+            השרת עדיין לא מוגדר ל־Web Push: הוסיפי ב־Vercel את{" "}
+            <span dir="ltr" className="font-mono">
+              SUPABASE_SERVICE_ROLE_KEY
+            </span>
+            ,{" "}
+            <span dir="ltr" className="font-mono">
+              NEXT_PUBLIC_VAPID_PUBLIC_KEY
+            </span>{" "}
+            ו־
+            <span dir="ltr" className="font-mono">
+              VAPID_PRIVATE_KEY
+            </span>{" "}
+            (יצירת זוג: מתוך תיקיית האפליקציה —{" "}
+            <span dir="ltr" className="font-mono">
+              npx web-push generate-vapid-keys
+            </span>
+            ). ודאי שב־Supabase רצה גם יצירת טבלת{" "}
+            <span dir="ltr" className="font-mono">
+              mom_push_devices
+            </span>{" "}
+            (כלול ב־schema-for-dashboard.sql).
+          </p>
+        )}
+      {prefs.backgroundPushEnabled &&
+        pushServerStatus?.pushInfrastructureReady &&
+        pushServerStatus.needsCronSecretInProduction &&
+        !pushServerStatus.cronSecretSet && (
+          <p
+            className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-xs leading-snug text-amber-950"
+            role="status"
+          >
+            לשליחת תזכורות אוטומטית מהענן בפרודקשן: הגדירי משתנה{" "}
+            <span dir="ltr" className="font-mono">
+              CRON_SECRET
+            </span>{" "}
+            ב־Vercel (מחרוזת אקראית), ואז Redeploy. הפרויקט כולל Cron כל 5 דקות ל־
+            <span dir="ltr" className="font-mono">
+              /api/push/cron
+            </span>
+            .
+          </p>
+        )}
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
         <label className="text-xs font-medium text-slate-700">
           שעת סיכום יומי:

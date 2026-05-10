@@ -75,3 +75,23 @@ create trigger on_auth_user_created
 
 -- Realtime (אם מתקבלת שגיאה שהטבלה כבר בפרסום — אפשר להתעלם)
 alter publication supabase_realtime add table public.mom_manager_state;
+
+-- ---------------------------------------------------------------------------
+-- Web Push (תזכורות כשהאפליקציה סגורה) — גישה רק דרך Service Role מהשרת
+-- ---------------------------------------------------------------------------
+create table if not exists public.mom_push_devices (
+  device_id text primary key,
+  subscription jsonb not null default '{}',
+  state jsonb not null default '{}',
+  background_push boolean not null default false,
+  pushed_reminder_date text not null default '',
+  pushed_reminder_keys text[] not null default '{}',
+  last_summary_push_date text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists mom_push_devices_background_idx
+  on public.mom_push_devices (background_push)
+  where background_push = true;
+
+alter table public.mom_push_devices enable row level security;

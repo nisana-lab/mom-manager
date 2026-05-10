@@ -146,6 +146,34 @@ Optional — שירותים נוספים (לא חובה)
 
 
 ================================================================================
+תזכורות כשהאפליקציה סגורה (Web Push)
+================================================================================
+
+בממשק: אשרי התראות בדפדפן → סמני «גם כשהאפליקציה סגורה (Web Push)» → מומלץ להתקין את
+האתר כאפליקציה במובייל (Chrome או «שיתוף→מסך הבית» ב־Safari).
+
+ב-Supabase — SQL Editor: ודאי שקיימת טבלת mom_push_devices (כלול ב־supabase/schema-for-dashboard.sql).
+אם כבר הרצת את הקובץ בעבר לפני שהטבלה נוספה — הריצי רק את חלק יצירת הטבלה מתחילת הבלוק החדש.
+
+ב-Vercel → Environment Variables (Production), בנוסף ל-anon:
+  SUPABASE_SERVICE_ROLE_KEY     (מ-Supabase → API → service_role — אל תחשפי בקוח!)
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  VAPID_PRIVATE_KEY
+  VAPID_SUBJECT                 לדוגמה: mailto:you@example.com
+  CRON_SECRET                   מחרוזת אקראית ארוכה (לא משותפת לאף אחד)
+
+יצירת זוג VAPID מתוך תיקיית mom-manager:
+  npx web-push generate-vapid-keys
+
+בפרויקט מוגדר Cron ב-vercel.json לקריאה ל-/api/push/cron כל 5 דקות.
+אחרי Deploy: Vercel → Cron Jobs — אמור להופיע משימה. בלי CRON_SECRET בפרודקשן הקריאה נחסמת.
+
+בדיקה מהירה בדפדפן:  https://<האתר>/api/push/config-status
+  pushInfrastructureReady — מפתחות Supabase service + VAPID
+  cronSecretSet — מוגדר CRON_SECRET
+
+
+================================================================================
 בדיקת שגיאת הרשמה בדפדפן (Network)
 ================================================================================
 
