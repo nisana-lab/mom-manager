@@ -55,7 +55,7 @@ function whyNoPlan(row: CronDeviceRow): string {
     return "אין כרגע משימה «באיחור» (לפי שעון ישראל): או שכל המשימות לפני עכשיו כבר מסומנות כבוצעות, או שעות המשימות עדיין בעתיד, או נודניק/ביטול ליום";
   }
   let pushedKeys = [...row.pushed_reminder_keys];
-  let pushedDate = row.pushed_reminder_date;
+  const pushedDate = row.pushed_reminder_date;
   if (pushedDate !== todayIso) pushedKeys = [];
   const key = reminderKey(todayIso, due.taskId);
   if (pushedKeys.includes(key)) {
