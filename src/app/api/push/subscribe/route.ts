@@ -5,6 +5,13 @@ import { parsePushSubscription } from "@/lib/push/subscription-parse";
 
 export const dynamic = "force-dynamic";
 
+function hintForDbError(message: string): string {
+  if (/row-level security/i.test(message)) {
+    return `${message} — בדרך כלל ב-Vercel הוגדר SUPABASE_SERVICE_ROLE_KEY עם מפתח anon בטעות; צריך את מפתח service_role מ-Supabase → Settings → API.`;
+  }
+  return message;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (selErr) {
     return NextResponse.json(
-      { ok: false, error: selErr.message },
+      { ok: false, error: hintForDbError(selErr.message) },
       { status: 500 }
     );
   }
@@ -61,7 +68,10 @@ export async function POST(req: NextRequest) {
       })
       .eq("device_id", deviceId);
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: hintForDbError(error.message) },
+        { status: 500 }
+      );
     }
   } else {
     const { error } = await supabase.from("mom_push_devices").insert({
@@ -75,7 +85,10 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     });
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: hintForDbError(error.message) },
+        { status: 500 }
+      );
     }
   }
 
