@@ -6,6 +6,7 @@ import {
   playReminderChime,
   unlockReminderAudio,
 } from "@/lib/reminder-chime";
+import { speakReminderPreviewSample } from "@/lib/reminder-speech";
 
 const SUMMARY_HOUR_OPTIONS = [17, 18, 19, 20, 21, 22, 23] as const;
 
@@ -106,6 +107,16 @@ export function NotificationPrefsBar() {
     }));
   };
 
+  const toggleReminderVoice = (on: boolean) => {
+    applyPersisted((prev) => ({
+      ...prev,
+      notificationPrefs: {
+        ...prev.notificationPrefs,
+        reminderVoiceEnabled: on,
+      },
+    }));
+  };
+
   const hourValue = SUMMARY_HOUR_OPTIONS.some((x) => x === prefs.dailySummaryHour)
     ? prefs.dailySummaryHour
     : 20;
@@ -166,7 +177,9 @@ export function NotificationPrefsBar() {
         <h2 className="text-sm font-bold text-slate-900">תזכורות וסיכום יומי</h2>
       </div>
       <p className="mb-3 text-xs leading-relaxed text-slate-600">
-        כשמגיעה תזכורת יישמע ציפצוף קצר באפליקציה (ובמובייל אפשר גם רטט). התראת מערכת
+        אפשר להפעיל הקראה קולית של שם המשימה בעברית אחרי הציפצוף (דפדפן עם תמיכה
+        בקול — לרוב Chrome/Android). כשמגיעה תזכורת יישמע ציפצוף קצר באפליקציה
+        (ובמובייל אפשר גם רטט). התראת מערכת
         מהדפדפן תופיע רק אחרי שתאשרי — בטלפון לוחצים על «אישור הרשאת התראות» או
         «בדיקת צליל והתראה», ואז מאשרים בחלון של המערכת (ב־iPhone: לעיתים דרך הגדרות
         האתר או אחרי התקנת האפליקציה למסך הבית).
@@ -200,6 +213,27 @@ export function NotificationPrefsBar() {
           className="rounded-lg border border-sage-400 bg-sage-50 px-2.5 py-1 text-xs font-semibold text-sage-900 hover:bg-sage-100"
         >
           בדיקת צליל והתראה
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-800">
+          <input
+            type="checkbox"
+            checked={prefs.reminderVoiceEnabled}
+            onChange={(e) => toggleReminderVoice(e.target.checked)}
+            className="h-4 w-4 rounded border-sage-300 text-sage-700"
+          />
+          הקראת משימה בקול (אחרי הציפצוף)
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            void unlockReminderAudio();
+            speakReminderPreviewSample();
+          }}
+          className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+        >
+          ניסוי הקראה בקול
         </button>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3">

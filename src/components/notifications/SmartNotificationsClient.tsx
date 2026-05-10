@@ -15,11 +15,18 @@ import {
   playReminderChime,
   unlockReminderAudio,
 } from "@/lib/reminder-chime";
+import {
+  cancelReminderSpeech,
+  speakReminderTask,
+} from "@/lib/reminder-speech";
 
 const SNOOZE_MS = 25 * 60 * 1000;
 
 /** רטט בסיסי להתראות במובייל (Android; ב־iOS תלוי דפדפן) */
 const REMINDER_VIBRATE_PATTERN = [140, 90, 140] as const;
+
+/** השהייה קצרה אחרי הציפצוף לפני הקראה קולית */
+const VOICE_AFTER_CHIME_MS = 420;
 
 export function SmartNotificationsClient() {
   const {
@@ -40,6 +47,9 @@ export function SmartNotificationsClient() {
   const lastBrowserTagRef = useRef<string | null>(null);
   const lastChimeKeyRef = useRef<string | null>(null);
 
+  const dueReminderKey =
+    due != null ? reminderKey(todayLocalISODate(), due.taskId) : null;
+
   /** פתיחת שמע אחרי מגע/לחיצה ראשונה — נדרש בחלק מהמכשירים (בעיקר iOS) */
   useEffect(() => {
     const unlock = () => {
@@ -50,14 +60,20 @@ export function SmartNotificationsClient() {
     return () => {};
   }, []);
 
+  /** מפתח יציב — לא תלוי בהחלפת אובייקט state כל 45 שניות */
   useEffect(() => {
-    if (!due) {
+    /** בדפדפן setTimeout מחזיר number — לא NodeJS.Timeout */
+    let speechTimer: number | undefined;
+
+    if (!dueReminderKey) {
       lastChimeKeyRef.current = null;
+      cancelReminderSpeech();
       return;
     }
-    const key = reminderKey(todayLocalISODate(), due.taskId);
-    if (lastChimeKeyRef.current === key) return;
-    lastChimeKeyRef.current = key;
+
+    if (lastChimeKeyRef.current === dueReminderKey) return;
+    lastChimeKeyRef.current = dueReminderKey;
+
     playReminderChime();
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       try {
@@ -66,7 +82,25 @@ export function SmartNotificationsClient() {
         /* */
       }
     }
-  }, [due]);
+
+    const voiceOn = Boolean(state?.notificationPrefs.reminderVoiceEnabled);
+    const title = due?.title ?? "";
+    const timeLabel = due?.timeLabel ?? "";
+    if (voiceOn) {
+      speechTimer = window.setTimeout(() => {
+        speakReminderTask(title, timeLabel);
+      }, VOICE_AFTER_CHIME_MS);
+    }
+
+    return () => {
+      if (speechTimer !== undefined) window.clearTimeout(speechTimer);
+    };
+  }, [
+    dueReminderKey,
+    due?.title,
+    due?.timeLabel,
+    state?.notificationPrefs.reminderVoiceEnabled,
+  ]);
 
   const runTick = useCallback(() => {
     if (!state) return;

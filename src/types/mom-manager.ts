@@ -125,6 +125,8 @@ export type NotificationPrefsPersisted = {
   reminderSnoozeUntil: Record<string, number>;
   /** עד 2 מספרי WhatsApp לשליחה מהירה (E.164 ללא +, לדוגמה 9725XXXXXXXX) */
   whatsappRecipients: string[];
+  /** הקראת שם המשימה בקול בעת תזכורת (Web Speech, כשהאפליקציה פתוחה) */
+  reminderVoiceEnabled: boolean;
 };
 
 export function defaultKidsTrackingTags(): KidsTrackTagDef[] {
@@ -210,5 +212,6 @@ export const defaultPersistedState = (): MomManagerPersisted => ({
     reminderKeysFiredToday: [],
     reminderSnoozeUntil: {},
     whatsappRecipients: [],
+    reminderVoiceEnabled: false,
   },
 });

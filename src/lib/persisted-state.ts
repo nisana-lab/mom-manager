@@ -375,6 +375,7 @@ function mergeNotificationPrefs(
           .filter((x) => x.length > 0)
           .slice(0, 2)
       : def.whatsappRecipients,
+    reminderVoiceEnabled: Boolean(n.reminderVoiceEnabled),
   };
 }
 
@@ -441,6 +442,7 @@ function repairPersisted(s: MomManagerPersisted): MomManagerPersisted {
             .filter((x) => x.length > 0)
             .slice(0, 2)
         : [],
+      reminderVoiceEnabled: Boolean(np.reminderVoiceEnabled),
     };
   }
 
