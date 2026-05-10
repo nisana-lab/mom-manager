@@ -116,8 +116,8 @@ Optional — שירותים נוספים (לא חובה)
    אם מוזג השורש הלא נכון (package.json בלי next) — לדחוף את התוכן של
    תיקיית mom-manager מהפרויקט המקומי לשורש הריפו.
 
-נוסף: בפרויקט נוסף קובץ mom-manager/vercel.json (framework: nextjs) כדי לעזור
-לזיהוי. אחרי שינוי — commit + push ו־Redeploy.
+נוסף: בפרויקט קיים קובץ vercel.json (בשורש הריפו כשהאפליקציה בשורש) כדי לעזור
+לזיהוי ולמשימות מתוזמנות. אחרי שינוי — commit + push ו־Redeploy.
 
 
 ================================================================================
@@ -165,12 +165,25 @@ Optional — שירותים נוספים (לא חובה)
 יצירת זוג VAPID מתוך תיקיית mom-manager:
   npx web-push generate-vapid-keys
 
-בפרויקט מוגדר Cron ב-vercel.json לקריאה ל-/api/push/cron כל 5 דקות.
-אחרי Deploy: Vercel → Cron Jobs — אמור להופיע משימה. בלי CRON_SECRET בפרודקשן הקריאה נחסמת.
+גבלת Vercel Hobby (חשוב לתזכורות ברקע):
+  בתוכנית החינמית אפשר רק קרון שרץ פעם ביום — ביטוי כמו כל 5 דקות גורם לפריסה
+  להיכשל עם הודעת Hobby. לכן ב-vercel.json מוגדר לוח יומי (ברירת מחדל 06:00 UTC).
+  לתזכורות תכופות במהלך היום יש שתי אפשרויות:
+    א) שדרוג החשבון ב-Vercel ל-Pro — ואז אפשר להחזיר ב-vercel.json לוח זמנים תכוף
+       (למשל כל 5 דקות) כפי שמופיע בתיעוד של web-push.
+    ב) להשאיר Hobby ולהגדיר שירות חיצוני חינמי (למשל cron-job.org) שיקרא לכתובת
+       המלאה של /api/push/cron עם כותרת Authorization: Bearer והערך של CRON_SECRET,
+       בתדירות הרצויה (למשל כל 5 דקות).
+
+אחרי Deploy: Vercel → Cron Jobs — אמורה להופיע לפחות משימה אחת (היומית).
+בלי CRON_SECRET בפרודקשן הקריאה נחסמת.
 
 בדיקה מהירה בדפדפן:  https://<האתר>/api/push/config-status
   pushInfrastructureReady — מפתחות Supabase service + VAPID
   cronSecretSet — מוגדר CRON_SECRET
+
+בדיקת «למה לא נשלח» (דורש את אותה כותרת Authorization כמו לקרון):
+  GET https://<האתר>/api/push/diagnostic
 
 
 ================================================================================
