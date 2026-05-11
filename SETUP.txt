@@ -159,7 +159,8 @@ Optional — שירותים נוספים (לא חובה)
   SUPABASE_SERVICE_ROLE_KEY     (מ-Supabase → API → service_role — אל תחשפי בקוח!)
   NEXT_PUBLIC_VAPID_PUBLIC_KEY
   VAPID_PRIVATE_KEY
-  VAPID_SUBJECT                 לדוגמה: mailto:you@example.com
+  VAPID_SUBJECT                 חובה בצורת כתובת: mailto:you@example.com
+                                (מייל לבד בלי mailto: גורם לשגיאה 500 בקרון)
   CRON_SECRET                   מחרוזת אקראית ארוכה (לא משותפת לאף אחד)
 
 יצירת זוג VAPID מתוך תיקיית mom-manager:
